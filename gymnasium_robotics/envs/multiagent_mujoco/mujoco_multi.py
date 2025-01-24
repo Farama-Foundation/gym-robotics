@@ -29,7 +29,6 @@ from gymnasium_robotics.envs.multiagent_mujoco.coupled_half_cheetah import (
     CoupledHalfCheetahEnv,
 )
 from gymnasium_robotics.envs.multiagent_mujoco.obsk import (
-    Node,
     build_obs,
     get_joints_at_kdist,
     get_parts_and_edges,
@@ -92,7 +91,7 @@ class MultiAgentMujocoEnv(pettingzoo.utils.env.ParallelEnv):
                 If set to 0 it only observes local state,
                 If set to 1 it observes local state + 1 joint over,
                 If set to 2 it observes local state + 2 joints over,
-                If it set to None the task becomes single agent (the agent observes the entire environment, and performs all the actions)
+                If it set to None the task becomes single agent (the agents observe the entire environment)
                 The Default value is: 1
             agent_factorization: A custom factorization of the MuJoCo environment (overwrites agent_conf),
                 see DOC [how to create new agent factorizations](https://robotics.farama.org/envs/MaMuJoCo/index.html#how-to-create-new-agent-factorizations).
@@ -125,25 +124,16 @@ class MultiAgentMujocoEnv(pettingzoo.utils.env.ParallelEnv):
             self.agent_obsk = agent_obsk  # if None, fully observable else k>=0 implies observe nearest k agents or joints
 
         # load the agent factorization
-        if self.agent_obsk is not None:
-            if agent_factorization is None:
-                (
-                    self.agent_action_partitions,
-                    mujoco_edges,
-                    self.mujoco_globals,
-                ) = get_parts_and_edges(scenario, agent_conf)
-            else:
-                self.agent_action_partitions = agent_factorization["partition"]
-                mujoco_edges = agent_factorization["edges"]
-                self.mujoco_globals = agent_factorization["globals"]
+        if agent_factorization is None:
+            (
+                self.agent_action_partitions,
+                mujoco_edges,
+                self.mujoco_globals,
+            ) = get_parts_and_edges(scenario, agent_conf)
         else:
-            self.agent_action_partitions = [
-                tuple(
-                    Node("dummy_node", None, None, i)
-                    for i in range(self.single_agent_env.action_space.shape[0])
-                )
-            ]
-            mujoco_edges = []
+            self.agent_action_partitions = agent_factorization["partition"]
+            mujoco_edges = agent_factorization["edges"]
+            self.mujoco_globals = agent_factorization["globals"]
 
         # Create agent lists
         self.possible_agents = [
@@ -288,9 +278,6 @@ class MultiAgentMujocoEnv(pettingzoo.utils.env.ParallelEnv):
             AssertionError:
                 If the Agent action factorization is badly defined (if an action is double defined or not defined at all)
         """
-        if self.agent_obsk is None:
-            return actions[self.possible_agents[0]]
-
         assert self.single_agent_env.action_space.shape is not None
         global_action = (
             np.zeros((self.single_agent_env.action_space.shape[0],)) + np.nan
@@ -324,9 +311,6 @@ class MultiAgentMujocoEnv(pettingzoo.utils.env.ParallelEnv):
             AssertionError:
                 If the Agent action factorization sizes are badly defined
         """
-        if self.agent_obsk is None:
-            return {self.possible_agents[0]: action}
-
         local_actions = {}
         for agent_id, partition in enumerate(self.agent_action_partitions):
             local_actions[self.possible_agents[agent_id]] = np.array(
@@ -412,12 +396,6 @@ class MultiAgentMujocoEnv(pettingzoo.utils.env.ParallelEnv):
         Returns:
             A cache that indexes global osbervations to local.
         """
-        if self.agent_obsk is None:
-            return {
-                self.possible_agents[0]: np.arange(
-                    self.single_agent_env.observation_space.shape[0]
-                )
-            }
         if not hasattr(self.single_agent_env.unwrapped, "observation_structure"):
             return None
 
