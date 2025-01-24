@@ -305,7 +305,7 @@ class AdroitHandHammerEnv(MujocoEnv, EzPickle):
         # override reward if not sparse reward
         if not self.sparse_reward:
             # get the palm to the hammer handle
-            reward = 0.1 * np.linalg.norm(palm_pos - hamm_pos)
+            reward = -0.1 * np.linalg.norm(palm_pos - hamm_pos)
             # take hammer head to nail
             reward -= np.linalg.norm(head_pos - nail_pos)
             # make nail go inside

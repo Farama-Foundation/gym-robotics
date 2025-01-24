@@ -294,7 +294,7 @@ class AdroitHandRelocateEnv(MujocoEnv, EzPickle):
 
         # override reward if not sparse reward
         if not self.sparse_reward:
-            reward = 0.1 * np.linalg.norm(palm_pos - obj_pos)  # take hand to object
+            reward = -0.1 * np.linalg.norm(palm_pos - obj_pos)  # take hand to object
             if obj_pos[2] > 0.04:  # if object off the table
                 reward += 1.0  # bonus for lifting the object
                 reward += -0.5 * np.linalg.norm(

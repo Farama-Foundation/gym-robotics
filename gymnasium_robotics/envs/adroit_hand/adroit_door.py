@@ -294,7 +294,7 @@ class AdroitHandDoorEnv(MujocoEnv, EzPickle):
             palm_pos = self.data.site_xpos[self.grasp_site_id].ravel()
 
             # get to handle
-            reward = 0.1 * np.linalg.norm(palm_pos - handle_pos)
+            reward = -0.1 * np.linalg.norm(palm_pos - handle_pos)
             # open door
             reward += -0.1 * (goal_distance - 1.57) * (goal_distance - 1.57)
             # velocity cost
