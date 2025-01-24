@@ -13,7 +13,6 @@ This project is covered by the Apache 2.0 License.
 
 import math
 import tempfile
-import time
 import xml.etree.ElementTree as ET
 from os import path
 from typing import Dict, List, Optional, Union
@@ -54,7 +53,6 @@ class Maze:
         maze_size_scaling: float,
         maze_height: float,
     ):
-
         self._maze_map = maze_map
         self._maze_size_scaling = maze_size_scaling
         self._maze_height = maze_height
@@ -236,12 +234,19 @@ class Maze:
         maze._unique_reset_locations += maze._combined_locations
 
         # Save new xml with maze to a temporary file
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            temp_xml_name = f"ant_maze{str(time.time())}.xml"
-            temp_xml_path = path.join(path.dirname(tmp_dir), temp_xml_name)
-            tree.write(temp_xml_path)
+        # Make temporary file object and make the string path to our new file
+        tmp_dir = tempfile.TemporaryDirectory()
+        temp_xml_path = path.join(tmp_dir.name, "ant_maze.xml")
 
-        return maze, temp_xml_path
+        # Write the new xml to the temporary file
+        with open(temp_xml_path, "wb") as xml_file:
+            tree.write(xml_file)
+
+        return (
+            maze,
+            temp_xml_path,
+            tmp_dir,  # The tmp_dir object is returned to keep it alive
+        )
 
 
 class MazeEnv(GoalEnv):
@@ -257,11 +262,10 @@ class MazeEnv(GoalEnv):
         position_noise_range: float = 0.25,
         **kwargs,
     ):
-
         self.reward_type = reward_type
         self.continuing_task = continuing_task
         self.reset_target = reset_target
-        self.maze, self.tmp_xml_file_path = Maze.make_maze(
+        self.maze, self.tmp_xml_file_path, self.tmp_dir = Maze.make_maze(
             agent_xml_path, maze_map, maze_size_scaling, maze_height
         )
 
@@ -420,3 +424,7 @@ class MazeEnv(GoalEnv):
         """Override this method to update the site qpos in the MuJoCo simulation
         after a new goal is selected. This is mainly for visualization purposes."""
         raise NotImplementedError
+    
+    def __del__(self):
+        self.tmp_dir.cleanup()
+        super().__del__()

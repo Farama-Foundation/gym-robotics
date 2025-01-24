@@ -150,11 +150,19 @@ class Maze:
         maze._unique_reset_locations += maze._combined_locations
 
         # Save new xml with maze to a temporary file
-        with tempfile.TemporaryDirectory() as tmp_dir:
-            temp_xml_path = path.join(path.dirname(tmp_dir), "ant_maze.xml")
-            tree.write(temp_xml_path)
+        # Make temporary file object and make the string path to our new file
+        tmp_dir = tempfile.TemporaryDirectory()
+        temp_xml_path = path.join(tmp_dir.name, "ant_maze.xml")
 
-        return maze, temp_xml_path
+        # Write the new xml to the temporary file
+        with open(temp_xml_path, "wb") as xml_file:
+            tree.write(xml_file)
+
+        return (
+            maze,
+            temp_xml_path,
+            tmp_dir,  # The tmp_dir object is returned to keep it alive
+        )
 
 
 class MazeEnv(GoalEnv):
@@ -172,7 +180,7 @@ class MazeEnv(GoalEnv):
 
         self.reward_type = reward_type
         self.continuing_task = continuing_task
-        self.maze, self.tmp_xml_file_path = Maze.make_maze(
+        self.maze, self.tmp_xml_file_path, self.tmp_dir = Maze.make_maze(
             agent_xml_path, maze_map, maze_size_scaling, maze_height
         )
 
@@ -308,3 +316,7 @@ class MazeEnv(GoalEnv):
 
     def update_target_site_pos(self, pos):
         raise NotImplementedError
+
+    def __del__(self):
+        self.tmp_dir.cleanup()
+        super().__del__()
